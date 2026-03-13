@@ -27,7 +27,7 @@ header p{font-size:.875rem;color:var(--text-2);max-width:600px;line-height:1.55}
 @media(max-width:860px){.layout{grid-template-columns:1fr;}}
 
 .chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.75rem 1.75rem 1.25rem;position:relative}
-.chart-area{position:relative;width:100%;aspect-ratio:1.35/1}
+.chart-area{position:relative;width:100%;aspect-ratio:1.35/1;min-height:400px}
 .chart-area svg{position:absolute;inset:0;width:100%;height:100%}
 
 .axis-label{font-size:.7rem;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;fill:var(--text-3)}
@@ -80,14 +80,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 
 <header>
   <h1>Priorisation de la transformation IA</h1>
-  <p>Positionnement des fonctions selon 4 axes. Ajustez les scores dans le panneau pour explorer différents scénarios.</p>
+  <p>Positionnement des métiers selon 4 axes. Ajustez les scores dans le panneau pour explorer différents scénarios.</p>
 </header>
 
 <div class="layout">
   <div>
     <div class="chart-wrap">
       <div class="chart-area" id="chartArea">
-        <svg id="chartSvg" viewBox="0 0 600 440"></svg>
+        <svg id="chartSvg" viewBox="0 0 700 520"></svg>
         <div class="tooltip" id="tooltip"></div>
       </div>
       <div class="legend">
@@ -137,14 +137,14 @@ const FUNCS = [
 ];
 
 const AXES = [
-  { key:'ia',  label:'Impact IA',      min:1,max:5 },
-  { key:'ca',  label:'Impact GMV',     min:1,max:5 },
-  { key:'app', label:'Appétence',      min:1,max:5 },
-  { key:'mat', label:'Maturité IA',    min:1,max:4 },
+  { key:'ia',  label:'Impact IA',      min:0,max:5 },
+  { key:'ca',  label:'Impact GMV',     min:0,max:5 },
+  { key:'app', label:'Appétence',      min:0,max:5 },
+  { key:'mat', label:'Maturité IA',    min:0,max:4 },
 ];
 
-const PAD = { top:30, right:30, bottom:50, left:55 };
-const W = 600, H = 440;
+const PAD = { top:50, right:50, bottom:55, left:60 };
+const W = 700, H = 520;
 const plotW = W - PAD.left - PAD.right;
 const plotH = H - PAD.top - PAD.bottom;
 
@@ -173,8 +173,8 @@ function appRadius(v) {
 }
 function score(f) { return f.ia + f.ca + f.app + f.mat; }
 
-function xPos(v) { return PAD.left + ((v - 1) / 4) * plotW; }
-function yPos(v) { return PAD.top + plotH - ((v - 1) / 4) * plotH; }
+function xPos(v) { return PAD.left + (v / 5) * plotW; }
+function yPos(v) { return PAD.top + plotH - (v / 5) * plotH; }
 
 const svg = document.getElementById('chartSvg');
 const tooltipEl = document.getElementById('tooltip');
@@ -182,15 +182,16 @@ let selected = null;
 
 function buildGrid() {
   let html = '';
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 0; i <= 5; i++) {
     const x = xPos(i), y = yPos(i);
-    html += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" class="grid-line" stroke-dasharray="${i===1?'0':'2 3'}"/>`;
-    html += `<line x1="${x}" y1="${PAD.top}" x2="${x}" y2="${H-PAD.bottom}" class="grid-line" stroke-dasharray="${i===1?'0':'2 3'}"/>`;
+    const isAxis = i === 0;
+    html += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" class="grid-line" ${isAxis?'stroke-width="1"':'stroke-dasharray="2 3"'}/>`;
+    html += `<line x1="${x}" y1="${PAD.top}" x2="${x}" y2="${H-PAD.bottom}" class="grid-line" ${isAxis?'stroke-width="1"':'stroke-dasharray="2 3"'}/>`;
     html += `<text x="${x}" y="${H-PAD.bottom+20}" text-anchor="middle" class="grid-label">${i}</text>`;
     html += `<text x="${PAD.left-12}" y="${y+3}" text-anchor="end" class="grid-label">${i}</text>`;
   }
-  html += `<text x="${W/2}" y="${H-4}" text-anchor="middle" class="axis-label">Impact de l'IA sur la fonction →</text>`;
-  html += `<text x="14" y="${H/2}" text-anchor="middle" class="axis-label" transform="rotate(-90,14,${H/2})">Impact sur la GMV →</text>`;
+  html += `<text x="${(PAD.left+W-PAD.right)/2}" y="${H-8}" text-anchor="middle" class="axis-label">Impact de l'IA sur le métier →</text>`;
+  html += `<text x="14" y="${(PAD.top+H-PAD.bottom)/2}" text-anchor="middle" class="axis-label" transform="rotate(-90,14,${(PAD.top+H-PAD.bottom)/2})">Impact du métier sur la GMV →</text>`;
   return html;
 }
 
