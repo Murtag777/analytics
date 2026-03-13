@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priorisation transformation IA — Intérim</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FAFAF8;--surface:#FFFFFF;--border:#E8E6E0;--border-hover:#D3D1C7;
+  --text:#1A1A18;--text-2:#5F5E5A;--text-3:#888780;
+  --accent:#1D6B99;--accent-light:#E6F1FB;
+  --m1:#D4537E;--m2:#EF9F27;--m3:#378ADD;--m4:#1D9E75;
+  --m1-light:#FBEAF0;--m2-light:#FAEEDA;--m3-light:#E6F1FB;--m4-light:#E1F5EE;
+  --radius:10px;--radius-lg:14px;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
+}
+html{font-family:var(--font);font-size:15px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+body{max-width:1120px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+header{margin-bottom:2.5rem}
+header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.35rem}
+header p{font-size:.875rem;color:var(--text-2);max-width:600px;line-height:1.55}
+
+.layout{display:grid;grid-template-columns:1fr 300px;gap:2rem;align-items:start}
+@media(max-width:860px){.layout{grid-template-columns:1fr;}}
+
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.75rem 1.75rem 1.25rem;position:relative}
+.chart-area{position:relative;width:100%;aspect-ratio:1.35/1}
+.chart-area svg{position:absolute;inset:0;width:100%;height:100%}
+
+.axis-label{font-size:.7rem;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;fill:var(--text-3)}
+.grid-line{stroke:var(--border);stroke-width:.5}
+.grid-label{font-size:.7rem;fill:var(--text-3);font-family:var(--mono)}
+
+.bubble{cursor:pointer;transition:transform .18s ease,filter .18s ease}
+.bubble:hover{filter:brightness(1.08) drop-shadow(0 2px 8px rgba(0,0,0,.12))}
+.bubble-label{font-size:.72rem;font-weight:600;fill:var(--text);pointer-events:none}
+
+.tooltip{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem;font-size:.8rem;line-height:1.5;box-shadow:0 4px 20px rgba(0,0,0,.08);pointer-events:none;opacity:0;transition:opacity .15s;z-index:10;max-width:260px}
+.tooltip.visible{opacity:1}
+.tooltip .fn{font-weight:600;margin-bottom:.25rem}
+.tooltip .row{display:flex;justify-content:space-between;gap:1rem}
+.tooltip .label{color:var(--text-3)}
+.tooltip .val{font-family:var(--mono);font-weight:500}
+
+.panel{display:flex;flex-direction:column;gap:1.25rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.25rem 1rem}
+.card h3{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:1rem}
+
+.fn-row{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.fn-row:last-child{border-bottom:none}
+.fn-row:hover{background:var(--accent-light);margin:0 -.5rem;padding-left:.5rem;padding-right:.5rem;border-radius:6px}
+.fn-row .dot{flex-shrink:0;border-radius:50%}
+.fn-row .name{font-size:.82rem;font-weight:500;flex:1}
+.fn-row .score{font-family:var(--mono);font-size:.8rem;font-weight:500;color:var(--text-2)}
+
+.slider-group{margin-bottom:.85rem}
+.slider-group:last-child{margin-bottom:0}
+.slider-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem}
+.slider-header label{font-size:.78rem;font-weight:500;color:var(--text)}
+.slider-header span{font-family:var(--mono);font-size:.78rem;color:var(--accent);font-weight:500}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+
+.legend{display:flex;flex-wrap:wrap;gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.legend-group{display:flex;flex-direction:column;gap:.35rem}
+.legend-group .ltitle{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+.legend-items{display:flex;gap:.7rem;align-items:center}
+.legend-item{display:flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--text-2)}
+.legend-dot{border-radius:50%;flex-shrink:0}
+
+.highlight{animation:pulse .6s ease}
+@keyframes pulse{0%{filter:brightness(1.3) drop-shadow(0 0 12px rgba(29,107,153,.4))}100%{filter:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Priorisation de la transformation IA</h1>
+  <p>Positionnement des fonctions selon 4 axes. Ajustez les scores dans le panneau pour explorer différents scénarios.</p>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="chart-wrap">
+      <div class="chart-area" id="chartArea">
+        <svg id="chartSvg" viewBox="0 0 600 440"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="legend">
+        <div class="legend-group">
+          <span class="ltitle">Taille — Appétence au changement</span>
+          <div class="legend-items">
+            <span class="legend-item"><span class="legend-dot" style="width:12px;height:12px;background:var(--text-3);opacity:.3"></span>Faible</span>
+            <span class="legend-item"><span class="legend-dot" style="width:18px;height:18px;background:var(--text-3);opacity:.3"></span>Moyenne</span>
+            <span class="legend-item"><span class="legend-dot" style="width:24px;height:24px;background:var(--text-3);opacity:.3"></span>Forte</span>
+          </div>
+        </div>
+        <div class="legend-group">
+          <span class="ltitle">Couleur — Maturité IA actuelle</span>
+          <div class="legend-items">
+            <span class="legend-item"><span class="legend-dot" style="width:14px;height:14px;background:var(--m1)"></span>1 — Naissante</span>
+            <span class="legend-item"><span class="legend-dot" style="width:14px;height:14px;background:var(--m2)"></span>2 — Émergente</span>
+            <span class="legend-item"><span class="legend-dot" style="width:14px;height:14px;background:var(--m3)"></span>3 — Installée</span>
+            <span class="legend-item"><span class="legend-dot" style="width:14px;height:14px;background:var(--m4)"></span>4 — Avancée</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="card" id="rankingCard">
+      <h3>Classement par score composite</h3>
+      <div id="ranking"></div>
+    </div>
+    <div class="card" id="editCard" style="display:none">
+      <h3 id="editTitle">Modifier</h3>
+      <div id="sliders"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FUNCS = [
+  { id:'cr',   name:'Chargé de recrutement',  short:'Recrutement',  ia:5, ca:5, app:4, mat:3 },
+  { id:'mktb', name:'Marketing B2B',          short:'Mkt B2B',      ia:5, ca:4, app:4, mat:1 },
+  { id:'mktc', name:'Marketing B2C',          short:'Mkt B2C',      ia:5, ca:3, app:4, mat:2 },
+  { id:'care', name:'Suivi de mission (care)', short:'Care',         ia:4, ca:4, app:3, mat:2 },
+  { id:'kam',  name:'Responsable site (KAM)', short:'KAM',          ia:3, ca:5, app:3, mat:1 },
+  { id:'bo',   name:'Back-Office',            short:'Back-Office',  ia:4, ca:2, app:2, mat:1 },
+  { id:'fin',  name:'Finance interne',        short:'Finance',      ia:3, ca:2, app:3, mat:1 },
+  { id:'rh',   name:'RH interne',             short:'RH',           ia:3, ca:1, app:3, mat:2 },
+];
+
+const AXES = [
+  { key:'ia',  label:'Impact IA',      min:1,max:5 },
+  { key:'ca',  label:'Impact GMV',     min:1,max:5 },
+  { key:'app', label:'Appétence',      min:1,max:5 },
+  { key:'mat', label:'Maturité IA',    min:1,max:4 },
+];
+
+const PAD = { top:30, right:30, bottom:50, left:55 };
+const W = 600, H = 440;
+const plotW = W - PAD.left - PAD.right;
+const plotH = H - PAD.top - PAD.bottom;
+
+function matColor(v) {
+  if (v <= 1) return 'var(--m1)';
+  if (v <= 2) return 'var(--m2)';
+  if (v <= 3) return 'var(--m3)';
+  return 'var(--m4)';
+}
+function matColorHex(v) {
+  if (v <= 1) return '#D4537E';
+  if (v <= 2) return '#EF9F27';
+  if (v <= 3) return '#378ADD';
+  return '#1D9E75';
+}
+function matBg(v) {
+  if (v <= 1) return 'var(--m1-light)';
+  if (v <= 2) return 'var(--m2-light)';
+  if (v <= 3) return 'var(--m3-light)';
+  return 'var(--m4-light)';
+}
+function appRadius(v) {
+  if (v <= 2) return 16;
+  if (v <= 3) return 24;
+  return 32;
+}
+function score(f) { return f.ia + f.ca + f.app + f.mat; }
+
+function xPos(v) { return PAD.left + ((v - 1) / 4) * plotW; }
+function yPos(v) { return PAD.top + plotH - ((v - 1) / 4) * plotH; }
+
+const svg = document.getElementById('chartSvg');
+const tooltipEl = document.getElementById('tooltip');
+let selected = null;
+
+function buildGrid() {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    const x = xPos(i), y = yPos(i);
+    html += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" class="grid-line" stroke-dasharray="${i===1?'0':'2 3'}"/>`;
+    html += `<line x1="${x}" y1="${PAD.top}" x2="${x}" y2="${H-PAD.bottom}" class="grid-line" stroke-dasharray="${i===1?'0':'2 3'}"/>`;
+    html += `<text x="${x}" y="${H-PAD.bottom+20}" text-anchor="middle" class="grid-label">${i}</text>`;
+    html += `<text x="${PAD.left-12}" y="${y+3}" text-anchor="end" class="grid-label">${i}</text>`;
+  }
+  html += `<text x="${W/2}" y="${H-4}" text-anchor="middle" class="axis-label">Impact de l'IA sur la fonction →</text>`;
+  html += `<text x="14" y="${H/2}" text-anchor="middle" class="axis-label" transform="rotate(-90,14,${H/2})">Impact sur la GMV →</text>`;
+  return html;
+}
+
+function labelOffset(f, i) {
+  const offsets = {
+    'cr':   { dx:0,   dy:-38 },
+    'mktb': { dx:-38, dy:-28 },
+    'mktc': { dx:38,  dy:-28 },
+    'care': { dx:34,  dy:-28 },
+    'kam':  { dx:-38, dy:-28 },
+    'bo':   { dx:38,  dy: 26 },
+    'fin':  { dx:-38, dy: 26 },
+    'rh':   { dx:0,   dy: 32 },
+  };
+  return offsets[f.id] || { dx:0, dy:-36 };
+}
+
+function buildBubbles() {
+  let html = '';
+  FUNCS.forEach((f, i) => {
+    const cx = xPos(f.ia), cy = yPos(f.ca);
+    const r = appRadius(f.app);
+    const color = matColorHex(f.mat);
+    const off = labelOffset(f, i);
+    html += `<g class="bubble" data-id="${f.id}" onclick="selectFunc('${f.id}')">`;
+    html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity=".82" stroke="${color}" stroke-width="1.5"/>`;
+    html += `<text x="${cx+off.dx}" y="${cy+off.dy}" text-anchor="middle" class="bubble-label">${f.short}</text>`;
+    html += `</g>`;
+  });
+  return html;
+}
+
+function render() {
+  svg.innerHTML = buildGrid() + buildBubbles();
+  renderRanking();
+  if (selected) renderSliders(selected);
+}
+
+function renderRanking() {
+  const sorted = [...FUNCS].sort((a, b) => score(b) - score(a));
+  let html = '';
+  sorted.forEach(f => {
+    const s = score(f);
+    const c = matColor(f.mat);
+    const r = f.app <= 2 ? 5 : f.app <= 3 ? 7 : 9;
+    html += `<div class="fn-row" data-id="${f.id}" onclick="selectFunc('${f.id}')">
+      <span class="dot" style="width:${r*2}px;height:${r*2}px;background:${c}"></span>
+      <span class="name">${f.short}</span>
+      <span class="score">${s}/19</span>
+    </div>`;
+  });
+  document.getElementById('ranking').innerHTML = html;
+}
+
+function selectFunc(id) {
+  selected = id;
+  document.getElementById('editCard').style.display = '';
+  renderSliders(id);
+  document.querySelectorAll('.fn-row').forEach(r => {
+    r.style.background = r.dataset.id === id ? 'var(--accent-light)' : '';
+  });
+  const bubble = svg.querySelector(`g[data-id="${id}"]`);
+  if (bubble) { bubble.classList.remove('highlight'); void bubble.offsetWidth; bubble.classList.add('highlight'); }
+}
+
+function renderSliders(id) {
+  const f = FUNCS.find(fn => fn.id === id);
+  document.getElementById('editTitle').textContent = f.name;
+  let html = '';
+  AXES.forEach(ax => {
+    html += `<div class="slider-group">
+      <div class="slider-header">
+        <label>${ax.label}</label>
+        <span id="val_${ax.key}">${f[ax.key]}</span>
+      </div>
+      <input type="range" min="${ax.min}" max="${ax.max}" step="1" value="${f[ax.key]}"
+        oninput="updateVal('${id}','${ax.key}',this.value)">
+    </div>`;
+  });
+  document.getElementById('sliders').innerHTML = html;
+}
+
+function updateVal(id, key, val) {
+  const f = FUNCS.find(fn => fn.id === id);
+  f[key] = parseInt(val);
+  document.getElementById('val_' + key).textContent = val;
+  render();
+}
+
+svg.addEventListener('mouseenter', () => {}, true);
+document.getElementById('chartArea').addEventListener('mousemove', e => {
+  const rect = document.getElementById('chartArea').getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const scaleX = rect.width / W, scaleY = rect.height / H;
+  let found = null;
+  FUNCS.forEach(f => {
+    const cx = xPos(f.ia) * scaleX, cy = yPos(f.ca) * scaleY;
+    const r = appRadius(f.app) * scaleX;
+    const dist = Math.sqrt((mx - cx) ** 2 + (my - cy) ** 2);
+    if (dist < r + 8) found = f;
+  });
+  if (found) {
+    tooltipEl.className = 'tooltip visible';
+    tooltipEl.innerHTML = `
+      <div class="fn">${found.name}</div>
+      <div class="row"><span class="label">Impact IA</span><span class="val">${found.ia}/5</span></div>
+      <div class="row"><span class="label">Impact GMV</span><span class="val">${found.ca}/5</span></div>
+      <div class="row"><span class="label">Appétence</span><span class="val">${found.app}/5</span></div>
+      <div class="row"><span class="label">Maturité IA</span><span class="val">${found.mat}/4</span></div>
+      <div class="row" style="border-top:1px solid var(--border);padding-top:.35rem;margin-top:.35rem"><span class="label" style="font-weight:600">Score</span><span class="val" style="font-weight:600">${score(found)}/19</span></div>
+    `;
+    let tx = mx + 16, ty = my - 10;
+    if (tx + 260 > rect.width) tx = mx - 270;
+    if (ty < 0) ty = 10;
+    tooltipEl.style.left = tx + 'px';
+    tooltipEl.style.top = ty + 'px';
+  } else {
+    tooltipEl.className = 'tooltip';
+  }
+});
+document.getElementById('chartArea').addEventListener('mouseleave', () => {
+  tooltipEl.className = 'tooltip';
+});
+
+render();
+</script>
+</body>
+</html>
